@@ -11,4 +11,6 @@ dependencies = [
     "pandas>=2.3.3",
     "ruff>=0.14.0",
     "scipy>=1.16.2",
+    "tqdm>=4.67.1",
 ]
+

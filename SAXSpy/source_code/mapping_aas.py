@@ -266,14 +266,111 @@ class Params:
         self.noRes = noRes
 
 # Create an instance of Params with noRes set to False
-params = Params(noRes=False)
+params = Params(noRes=True)
 
 # Call the init_mapping_amino function with the params object
 pdb_atom_map, atom_map, pdb_map = mapping_amino(params)
 
-# Print the mappings
-print("PDB Atom Map:", pdb_atom_map.mapping)
-print("Atom Map:", atom_map.mapping)
-print("PDB Map:", pdb_map.mapping)
+# # Print the mappings
+# print("PDB Atom Map:", pdb_atom_map.mapping)
+# print("Atom Map:", atom_map.mapping)
+# print("PDB Map:", pdb_map.mapping)
 
+### Function which maps the atom names of a residue to the corresponding group in the mapping ###
+def map_pyrosetta_atom_names(atom_names, restype3):
+    atom_names_mapped = []
+    for k in [v.strip() for v in atom_names]:
+        if restype3 + "." + k in pdb_map.mapping:
+            atom_names_mapped.append(pdb_map.mapping[restype3 + "." + k])
+        elif k in pdb_atom_map.mapping:
+            atom_names_mapped.append(pdb_atom_map.mapping[k])
+        elif k in atom_map.mapping:
+            atom_names_mapped.append(atom_map.mapping[k])
+        else: 
+            # Missing ones are the oxygens (hopefully), there are removed 
+            if not "H" in k: # this is crude
+                print("Warning : missing atom : %s"%k)
+                # raise RuntimeError("We should only have hydrogen atom missing, this should be investigated")
+            atom_names_mapped.append(None) # I append nothing here just to remove it later
+    return atom_names_mapped
 
+### Functions which maps the atom names of a residue to the corresponding martini group ###
+def map_pyrosetta_martini_names(atom_names, restype3, martini_mapping):
+    martini_mapped = []
+    for k in [v.strip() for v in atom_names]:
+        if k not in martini_mapping[restype3]:
+            martini_mapped.append(None)
+        else:
+            martini_mapped.append(martini_mapping[restype3][k])
+    return martini_mapped
+
+import os
+from rotamer_library import restypes3
+
+# Read the file of Martini mapping for one residue
+def read_mapping_martini(file):
+    mapping = {}
+    with open(file, "r") as f:
+        line = f.readline().strip()
+        while(not line.startswith("[ atoms ]")):
+            line = f.readline().strip()
+
+        for l in f:
+            l = l.strip()
+            if l.startswith("["):
+                break
+            if l.startswith(";"):
+                continue
+            spl = l.split()
+            if ";" in spl:
+                spl = spl[:spl.index(";")]
+            if len(spl)<3:
+                continue
+            mapping[spl[1]] = spl[2:]
+    return mapping
+
+# map each residue to martini beads
+def get_res_map_martini(
+        mapping_path,
+        charmm_or_gromo = False,
+        remove_hydrogens=False
+):
+
+    if not charmm_or_gromo:
+        fname =    "%s.gromos.map"
+    else:
+        fname =    "%s.charmm36.map"
+
+    mapping = {}
+    for res in restypes3:
+        file = os.path.join(mapping_path, fname%(res.lower()))
+        mapping[res] =  read_mapping_martini(file)
+
+    if remove_hydrogens:
+        mapping =  {k:{i:v2 for i,v2 in v.items() if not i.startswith("H")} for k, v in mapping.items()}
+    return mapping
+
+# Define the radii of the amino acids
+# This dictionary maps amino acid three-letter codes to their respective radii
+amino_acid_radii = {
+        "ALA": 3.1,
+        "ARG": 4.0,
+        "ASN": 3.6,
+        "ASP": 3.6,
+        "CYS": 3.6,
+        "GLU": 3.8,
+        "GLN": 3.8,
+        "GLY": 2.9,
+        "HIS": 3.9,
+        "ILE": 3.6,
+        "LEU": 3.6,
+        "LYS": 3.7,
+        "MET": 3.8,
+        "PHE": 3.9,
+        "PRO": 3.4,
+        "SER": 3.3,
+        "THR": 3.5,
+        "TRP": 4.3,
+        "TYR": 4.1,
+        "VAL": 3.4,
+}

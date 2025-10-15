@@ -1,32 +1,86 @@
 # formfactor.py
-# Author: Isabel Vinterbladh
-# This file contains the class cSaXSparameters which is used to calculate the form factors of the atoms and then amino acids in the protein structure.
+"""
+Author: Isabel Vinterbladh
+This module contains the `cSAXSparameters` class, which is used to calculate the form factors of atoms and amino acids in protein structures. 
+The calculations are based on scattering vector magnitudes and predefined atomic parameters. The module also includes utility functions for distance calculations and fast form factor computations.
+Classes:
+cSAXSparameters:
+    - A class for calculating atomic and amino acid form factors.
+    - Contains methods for initializing atomic parameters, computing form factors, and handling dummy atom corrections.
+Functions:
+----------
+calculate_distogram(coords):
+    - Calculates the pairwise Euclidean distance matrix (distogram) for a set of coordinates.
+getAAFormFactor_fast(dgram, q, ff, eps=1e-6):
+    - Computes the form factor using a fast implementation of equations from the Martini paper.
+poly6d_fixed(x_data, y_data):
+    - Fits a fixed 6th-degree polynomial to the given data points with a constraint that the first derivative at x=0 is zero.
+------
+- The `cSAXSparameters` class includes methods for handling special cases, such as Arginine residues, and provides corrections for dummy atoms and hydration shells.
+- The module uses mathematical models and optimization techniques to compute accurate form factors for protein structures.
+"""
 import numpy as np
-import cmath
+from scipy.optimize import minimize
+from functools import partial
+#import voronotalt_python as voronota
 
-### Class cSaXSparameters ###
-# This class is used to calculate the form factors of the atoms and then amino acids in the protein structure.
-# The class contains the following methods:
-# 1. __init__: Initializes the class with the given parameters.
-# 2. paramsFormFactors: Initializes the parameters for the form factors of the atoms.
-# 3. getFormFactor: Calculates the form factor of an atom given the q value and the atom type.
-# 4. getGroupFormFactor: Calculates the form factor of a group of atoms given the q value and the group type.
-# 5. getGroupFormFactor2: Calculates the form factor of a group of atoms given the q value and the group type. - Special case for Arginine.
-# 6. getDummyAtomsFactor: Calculates the form factor of the dummy atoms given the q value and the atom type. 
-# 7. getDummyAtomsFactorCorr0: Calculates the form factor of the dummy atoms given the q value and the atom type.
-# 8. computeFormFactors: Computes the form factors of the atoms in the protein structure. 
-# 9. getAAFormFactor: Calculates the form factor of the amino acids in the protein structure. ref. Single bead approximation 2.1.4
-# 10. getAAFormFactor212: Calculates the form factor of the amino acids in the protein structure. ref. Spherical glob approximation 2.1.2 
-# 11. getAAFormFactorDummy: Calculates the form factor of the dummy atoms in the protein structure.
-# 12. getr_kl: Calculates the position vector of an atom in the structure relative to the center of mass.
 
 class cSAXSparameters:
+    """
+    This class is used to calculate the form factors of the atoms and then amino acids in the protein structure.
+    The class contains the following methods:
+    1. __init__: Initializes the class with the given parameters.
+    2. paramsFormFactors: Initializes the parameters for the form factors of the atoms.
+    3. getFormFactor: Calculates the form factor of an atom given the q value and the atom type.
+    4. getGroupFormFactor: Calculates the form factor of a group of atoms given the q value and the group type.
+    5. getGroupFormFactor2: Calculates the form factor of a group of atoms given the q value and the group type. - Special case for Arginine.
+    6. getDummyAtomsFactor: Calculates the form factor of the dummy atoms given the q value and the atom type. 
+    7. getDummyAtomsFactorCorr0: Calculates the form factor of the dummy atoms given the q value and the atom type.
+    8. getDummyAtomsFactorFraser: Calculates the form factor of the dummy atoms given the q value and the atom type.
+    9. getDummyAtomsFactorSvergun: Calculates the form factor of the dummy atoms given the q value and the atom type.
+    10. getHydrationShell: Calculates the hydration shell of the protein structure.
+    11. computeFormFactors: Computes the form factors of the atoms in the protein structure. 
+    12. getAAFormFactor: Calculates the form factor of the amino acids in the protein structure. ref. Single bead approximation 2.1.4
+    """
+    # Mean electron density of the solvent
+    MEAN_ELECTRON_DENSITY = 0.334
+
     def __init__(self):
         self.fj = {}
         self.paramsFormFactors()
 
     def paramsFormFactors(self):
+        """
+        Initializes the `fj` dictionary with predefined parameters for various form factors.
+        This method defines a nested class `cSASParams` to encapsulate the parameters for each form factor.
+        The `fj` dictionary is populated with instances of `cSASParams`, each representing a specific form factor
+        with its associated parameters.
+        Attributes:
+            fj (dict): A dictionary where keys are atom or atom group names (e.g., 'N', 'C', 'O') and values are instances
+                       of `cSASParams` containing the parameters for the respective atom.
+        Nested Class:
+            cSASParams:
+                Represents form factor parameters for an atom.
+                Attributes:
+                    a1, a2, a3, a4, a5 (float): Coefficients for the five-Gaussian equation used for the form factor calculation.
+                    b1, b2, b3, b4, b5 (float): Exponential coefficients for five-Gaussian equation used for the form factor calculation.
+                    c (float): Constant parameter in the five-Gaussian equation.
+                    h (int): Hydrogen count associated with the atom/atom group.
+                    rh (float): Distanc between main atom and hydrogen (optional, default is 0, when no hydrogens are included).
+                    r (float): Radius of the atom or group.
+                    dsv (float): Dry solvent volume.
+                    name (str): Name of the atom.
+        Notes:
+            - The `fourPi` constant is used to calculate the volume of atoms based on their radius.
+            - Some form factors include specific adjustments or scaling factors (e.g., 'NIV', 'NHIV').
+            - The method supports the calculation of a wide range of form factors, including atoms, functional groups, and ions.
+        Example:
+            After calling this method, the `fj` dictionary will contain entries like:
+            `fj['N']`, `fj['C']`, `fj['O']`, etc., each initialized with their respective parameters.
+        """
+        
         class cSASParams:
+            
             def __init__(self, a1, a2, a3, a4, a5, b1, b2, b3, b4, b5, c, h, r, dsv, name, rh=0):
                 self.a1 = a1
                 self.a2 = a2
@@ -45,7 +99,7 @@ class cSAXSparameters:
                 self.dsv = dsv
                 self.name = name
                 
-        fourPi = 4 * np.pi
+        fourPi = 4 * np.pi  # Used to calculate the volume of atoms based on their radius
         self.fj['N'] = cSASParams(11.893780, 3.277479, 1.858092, 0.858927, 0.912985, 0.000158, 10.232723, 30.344690, 0.656065, 0.217287, -11.80490, 0, 0.84, 2.49, "N")
         self.fj['C'] = cSASParams(2.657506, 1.078079, 1.490909, -4.241070, 0.713791, 14.780758, 0.776775, 42.086842, -0.000294, 0.239535, 4.297983, 0, 1.577, 16.43, "C")
         self.fj['O'] = cSASParams(2.960427, 2.508818, 0.637853, 0.722838, 1.142756, 14.182259, 5.936858, 0.112726, 34.958481, 0.390240, 0.027014, 0, 1.3, 9.203, "O")
@@ -86,7 +140,28 @@ class cSAXSparameters:
 
 
     def getFormFactor(self, q, F): # F is the atom type as a string
-        q2 = q * q / (4 * np.pi * np.pi)   
+        """
+        Calculate the form factor for a given atom type and scattering vector magnitude.
+        Parameters:
+            q (float): The magnitude of the scattering vector.
+            F (str): The atom type as a string.
+        Returns:
+            float: The calculated form factor for the specified atom type.
+        Raises:
+            ValueError: If the provided atom type `F` is not valid.
+        Notes:
+            - The function uses pre-defined parameters for each atom type stored in `self.fj`.
+            - Special cases for "N_guan_1" (NE of Arginine) and "N_guan" (NH of Arginine) are handled
+              separately using `getGroupFormFactor2`.
+            - For atoms with `h == 0`, the form factor is calculated using a sum of exponential terms
+              based on atom-specific parameters.
+            - For other atoms, the form factor is calculated using `getGroupFormFactor`.
+        """
+        
+        if F not in self.fj:
+            raise ValueError(f"Invalid atom type '{F}'. Please provide a valid atom type.")
+        
+        q2 = q * q / (16 * np.pi * np.pi)   
         atom = self.fj[F] # finding which params to use for the atom type
         if atom.name == "N_guan_1":  # NE of Arginine
             return self.getGroupFormFactor2(q, 2.0 / 3.0, self.fj['NHIV'], 1.0 / 3.0, self.fj['NIV'])
@@ -94,12 +169,32 @@ class cSAXSparameters:
             return self.getGroupFormFactor2(q, 2.0 / 3.0, self.fj['NH2'], 1.0 / 3.0, self.fj['NH'])
 
         if atom.h == 0:
-            return atom.c + atom.a1 * np.exp(-q2 * atom.b1) + atom.a2 * np.exp(-q2 * atom.b2) + atom.a3 * np.exp(-q2 * atom.b3) + atom.a4 * np.exp(-q2 * atom.b4) + atom.a5 * np.exp(-q2 * atom.b5)  #- atom.dsv*0.334*np.exp(-np.pi*q2*atom.dsv**(2/3))
+            return atom.c + atom.a1 * np.exp(-q2 * atom.b1) + atom.a2 * np.exp(-q2 * atom.b2) + atom.a3 * np.exp(-q2 * atom.b3) + atom.a4 * np.exp(-q2 * atom.b4) + atom.a5 * np.exp(-q2 * atom.b5) 
         else:
             return self.getGroupFormFactor(q, atom)
 
     def getGroupFormFactor(self, q, F):
-        q2 = q * q / (4 * np.pi * np.pi)
+        """
+        Calculate the group form factor for a given scattering vector magnitude `q` and form factor parameters `F`.
+        This function computes the form factor `f` based on the input parameters, including the scattering vector magnitude `q`,
+        and the form factor coefficients `F`. It uses mathematical expressions involving exponential decay and trigonometric functions
+        to calculate the result.
+        Args:
+            q (float): The magnitude of the scattering vector.
+            F (object): An object containing form factor parameters. It is expected to have the following attributes:
+                - c (float): Constant term in the form factor calculation.
+                - a1, a2, a3, a4, a5 (float): Coefficients for exponential terms.
+                - b1, b2, b3, b4, b5 (float): Exponential decay factors.
+                - h (float): Height parameter for the form factor.
+                - rh (float): Radius parameter for the form factor.
+        Returns:
+            float: The calculated group form factor `f`.
+        Notes:
+            - If `q` is zero, a small epsilon value is added to avoid division by zero in the calculation.
+            - The function uses attributes from `self.fj['H']` for intermediate calculations, which should be defined in the class.
+        """
+        
+        q2 = q * q / (16 * np.pi * np.pi)
 
         G = self.fj['H']
         fh = G.c + G.a1 * np.exp(-q2 * G.b1) + G.a2 * np.exp(-q2 * G.b2) + G.a3 * np.exp(-q2 * G.b3) + G.a4 * np.exp(-q2 * G.b4) + G.a5 * np.exp(-q2 * G.b5)
@@ -107,14 +202,32 @@ class cSAXSparameters:
         fc = F.c + F.a1 * np.exp(-q2 * F.b1) + F.a2 * np.exp(-q2 * F.b2) + F.a3 * np.exp(-q2 * F.b3) + F.a4 * np.exp(-q2 * F.b4) + F.a5 * np.exp(-q2 * F.b5)
         f = 0
         if q == 0:
-            f = fc + F.h * fh
+            f =  f = fc + F.h * fh
         else:
             f = np.sqrt(fc * fc + F.h * F.h * fh * fh + 2 * fc * F.h * fh * np.sin(q * F.rh) / (q * F.rh))
             #f = fc + F.h * fh * np.sin(q * F.rh) / (q * F.rh)
-        return f #- F.dsv*0.334*np.exp(-np.pi*q2*F.dsv**(2/3))
+        return f
 
     def getGroupFormFactor2(self, q, c1, F1, c2, F2):
-        q2 = q * q / (4 * np.pi * np.pi)
+        """
+        Calculate the combined form factor for two groups based on their individual form factors.
+        This method computes the weighted sum of the form factors for two groups, F1 and F2, 
+        using their respective coefficients c1 and c2. The form factor for each group is 
+        determined either by a predefined formula (if `h == 0`) or by calling the 
+        `getGroupFormFactor` method.
+        Args:
+            q (float): The scattering vector magnitude.
+            c1 (float): Coefficient for the first group's form factor.
+            F1 (object): An object representing the first group, containing attributes 
+                         `h`, `c`, `a1` to `a5`, and `b1` to `b5`.
+            c2 (float): Coefficient for the second group's form factor.
+            F2 (object): An object representing the second group, containing attributes 
+                         `h`, `c`, `a1` to `a5`, and `b1` to `b5`.
+        Returns:
+            float: The combined form factor for the two groups.
+        """
+        
+        q2 = q * q / (16 * np.pi * np.pi)
 
         if F1.h == 0:
             f1 = F1.c + F1.a1 * np.exp(-q2 * F1.b1) + F1.a2 * np.exp(-q2 * F1.b2) + F1.a3 * np.exp(-q2 * F1.b3) + F1.a4 * np.exp(-q2 * F1.b4) + F1.a5 * np.exp(-q2 * F1.b5)
@@ -128,88 +241,334 @@ class cSAXSparameters:
 
         return c1 * f1 + c2 * f2  #- F1.dsv*0.334*np.exp(-np.pi*q2*F1.dsv**(2/3)) * F2.dsv*0.334*np.exp(-np.pi*q2*F2.dsv**(2/3))
     
-    def getDummyAtomsFactor(self, q, G):
+    def getDummyAtomsFactor_noVolume(self, q, G):
+        """
+        Calculate the correction factor for dummy atoms contribution to the form factor.
+        This method computes the correction factor for the excluded solvent contribution 
+        to the form factor, based on the dummy atoms model (nr0) used in Pepsi-SAXS.
+        Args:
+            q (float): The scattering vector magnitude.
+            G (object): An object representing the dummy atom group, containing radius `r`.
+        Returns:
+            float: The correction factor for the dummy atoms contribution.
+        Notes:
+            - `fj[G]` is used to retrieve the specific dummy atom group properties.
+            - `MEAN_ELECTRON_DENSITY` represents the average electron density.
+            - The volume of the dummy atom is calculated using the formula for the volume 
+              of a sphere: V = (4/3) * π * r^3.
+            - The exponential term accounts for the scattering attenuation based on the 
+              scattering vector and the dummy atom volume.
+        """
         G = self.fj[G]
-        p = 0.334
+        p = self.MEAN_ELECTRON_DENSITY
+        #V = (4 * np.pi * G.r**3) / 3.0
+        q2 = q * q
+        return p *  np.exp(-q2 / (4 * np.pi))
+    
+    def getDummyAtomsFactor(self, q, G):
+        """
+        Calculate the correction factor for dummy atoms contribution to the form factor.
+        This method computes the correction factor for the excluded solvent contribution 
+        to the form factor, based on the dummy atoms model (nr0) used in Pepsi-SAXS.
+        Args:
+            q (float): The scattering vector magnitude.
+            G (object): An object representing the dummy atom group, containing radius `r`.
+        Returns:
+            float: The correction factor for the dummy atoms contribution.
+        Notes:
+            - `fj[G]` is used to retrieve the specific dummy atom group properties.
+            - `MEAN_ELECTRON_DENSITY` represents the average electron density.
+            - The volume of the dummy atom is calculated using the formula for the volume 
+              of a sphere: V = (4/3) * π * r^3.
+            - The exponential term accounts for the scattering attenuation based on the 
+              scattering vector and the dummy atom volume.
+        """
+        G = self.fj[G]
+        p = self.MEAN_ELECTRON_DENSITY
         V = (4 * np.pi * G.r**3) / 3.0
         q2 = q * q
         return p * V * np.exp(-q2 * pow(V, 2.0/3.0) / (4 * np.pi))
-
+    
+    
     def getDummyAtomsFactorCorr0(self, q, G):
+        """
+        Calculate the correction factor for dummy atoms contribution to the form factor.
+        This method computes the correction factor for the excluded solvent contribution 
+        of dummy atoms according to the Pepsi-SAXS model (version nr1). Unlike version nr0, 
+        this implementation uses the tabulated volume of the dummy atom.
+        Args:
+            q (float): The scattering vector magnitude.
+            G (object): An object representing the dummy atom, containing its tabulated 
+                        volume (`dsv`) and other properties.
+        Returns:
+            float: The correction factor for the dummy atoms contribution to the form factor.
+        Notes:
+            - The correction factor is calculated using the formula:
+              `p * V * exp(-s2 * π * (V^(2/3)))`
+              where:
+              - `p` is a the mean electron density of the solvent (0.334),
+              - `V` is the tabulated volume of the dummy atom,
+              - `s2` is derived from the scattering vector magnitude `q`.
+        """ 
         G = self.fj[G]
-        p = 0.334
+        p = self.MEAN_ELECTRON_DENSITY  # mean electron density of the solvent
         V = G.dsv
-        q2 = q * q / (4 * np.pi * np.pi)
-        factor = q2 * np.pi * pow(V, 2.0 / 3.0)
+        s2 = q * q / (4 * np.pi * np.pi)
+        factor = s2 * np.pi * pow(V, 2.0 / 3.0)
         return p * V * np.exp(-factor)
+    
+    def getDummyAtomsFactorFraser(self, q, G):
+        """
+        Calculate the correction factor for dummy atoms contribution to the form factor 
+        based on Fraser et al. 1978 J. Appl. Cryst. 11, 693-694.
 
+        This method computes the excluded solvent contribution to the form factor 
+        using the mean electron density of the solvent and the radius of the dummy atoms.
+
+        Args:
+            q (float): The scattering vector magnitude.
+            G (object): An object representing the dummy atom, containing its radius `r`.
+
+        Returns:
+            float: The correction factor for the dummy atoms contribution to the form factor.
+        """
+        G = self.fj[G]
+        p = self.MEAN_ELECTRON_DENSITY  # mean electron density of the solvent
+        V = pow(np.pi, 3/2) * G.r**3
+        q2 = q * q / (4 * np.pi * np.pi)
+        return p * V * np.exp(-q2 * np.pi * pow(V, 2.0/3.0))
+    
+    def getDummyAtomsFactorSvergun(self, q, G):
+        """
+        Calculate the correction factor for dummy atoms contribution to the form factor 
+        based on the method described by Svergun et al. (1995, J. Appl. Cryst. 28, 768-773).
+
+        This function computes the excluded solvent correction factor for dummy atoms, 
+        incorporating an additional exponential factor to account for the average radius 
+        of the dummy atom, referred to as the overall expansion factor in the referenced paper.
+
+        Args:
+            q (float): Scattering vector magnitude.
+            G (object): An object containing properties of the dummy atom group, including:
+                - dsv: Excluded solvent volume.
+                - r: Radius of the dummy atom.
+
+        Returns:
+            float: The computed correction factor for the dummy atoms contribution to the form factor.
+        """ 
+        G = self.fj[G]
+        V = G.dsv
+        r0 = G.r
+        s2 = q * q / (4 * np.pi * np.pi)
+        factor = s2 * np.pi * pow(V, 2.0 / 3.0)
+        rm= 1.62 # radius of average dummy atom
+        expG = (r0/rm)**2 * np.exp(- s2 * np.pi * pow(4*np.pi/3, 3/2) * (pow(r0, 2.0) - pow(rm,2.0)))
+        return expG * V * np.exp(-factor)
+    
+    def getHydrationShell(self, q, tessellation, limit=30):
+        """
+        Calculate the hydration shell form factor.
+
+        This method computes the hydration shell form factor based on the 
+        provided scattering vector `q`, tessellation data, and a limit for 
+        solvent-accessible surface area (SASA). The hydration shell form factor 
+        is calculated using the form factor of water molecules and the SASA 
+        of the tessellation cells.
+
+        Args:
+            q (numpy.ndarray): Scattering vector values.
+            tessellation (object): Tessellation object containing cell data.
+            limit (int, optional): Threshold for solvent-accessible surface area 
+                (SASA). Cells with SASA below this limit are excluded. Defaults to 30.
+                
+        Returns:
+            numpy.ndarray: Hydration shell form factor values.
+        """
+        # Calculate the hydration shell form factor
+        H = self.fj['H2O']  # Get the form factor for water
+        cells = tessellation.cells
+        H20_FF = self.getFormFactor(q, 'H2O')
+        #sasa = np.array([aa.sas_area for aai, aa in enumerate(cells)])  #get sasa for amino acid
+        sasa = np.array([aa.sas_area for aa in cells]) 
+        sasa[sasa <= limit] = 0
+        HS = sasa * H20_FF * np.sin(q * H.r) / (q * H.r)
+        # Set values under the limit to zero
+        return HS #- self.getDummyAtomsFactor(q, 'H2O')
+    
+    def computeWaterFormFactor(self, q):
+        """
+        Compute the form factors for a set of atoms based on the given parameters and q-values.
+        This method calculates the form factors for atoms by subtracting the contribution
+        of dummy atoms from the raw form factor values. The resulting form factors exclude
+        the displaced solvent contribution.
+        Args:
+            params (list or array-like): A list of parameters representing the atoms.
+            q (float or array-like): The q-values (momentum transfer) for which the form factors
+                are computed.
+        Returns:
+            numpy.ndarray: An array of computed form factors for the atoms, with the dummy
+            atoms contribution removed.
+        """
+        
+        return self.getFormFactor(q, 'H2O')
+        
     def computeFormFactors(self, params, q):
-        curve = np.zeros(len(params))
-        curveDummy = np.zeros(len(params))
-      # now calculate the two curves...
+        """
+        Compute the form factors for a set of atoms based on the given parameters and q-values.
+        This method calculates the form factors for atoms by subtracting the contribution
+        of dummy atoms from the raw form factor values. The resulting form factors exclude
+        the displaced solvent contribution.
+        Args:
+            params (list or array-like): A list of parameters representing the atoms.
+            q (float or array-like): The q-values (momentum transfer) for which the form factors
+                are computed.
+        Returns:
+            numpy.ndarray: An array of computed form factors for the atoms, with the dummy
+            atoms contribution removed.
+        """
+        atomffs = np.zeros(len(params)) # form factors for the atoms
         for nr, it in enumerate(params):
-            #for s in range(len(self.q)):
-            curveDummy[nr] = self.getDummyAtomsFactorCorr0(q, it)
-            curve[nr] = self.getFormFactor(q, it) - curveDummy[nr]
-
-        return curve
+            atomffs[nr] = self.getFormFactor(q, it) - self.getDummyAtomsFactorSvergun(q, it) #  # remove the dummy atoms contribution
+        return atomffs # returning the exclusion form factors - have removed the displaced solvent contribution
 
     
-    def getAAFormFactor(self, qval, curve, params, coords):
-        factors = 0
-        def getr_kl(coords, k, l):
-            a1 = coords[k]
-            a2 = coords[l]
-            
-            x = a1[0]-a2[0]
-            y = a1[1]-a2[1]
-            z = a1[2]-a2[2]
-            return np.sqrt(x**2 + y**2 + z**2)
-        #for itr, qval in enumerate(q):
-        if qval == 0.0:
-            for p in range(0,len(params)):
-                factors += curve[p]
-            return factors
+    def getAAFormFactor(self, qval, atomffs, coords):
+        """
+        Calculate the atomic form factor for a given set of atomic coordinates and form factors.
+        Parameters:
+        -----------
+        qval : float
+            The scattering vector magnitude (q). If qval is 0, the form factor is calculated 
+            as the sum of the atomic form factors.
+        atomffs : numpy.ndarray
+            Array of atomic form factors for each atom.
+        coords : numpy.ndarray
+            Array of atomic coordinates with shape (N, 3), where N is the number of atoms.
+        Returns:
+        --------
+        numpy.ndarray
+            The calculated atomic form factor for the given q value and atomic configuration.
+            If qval is 0, returns a single scalar value. Otherwise, returns an array of form 
+            factors for each atom.
+        """
+        if qval == 0:
+            return np.sum(atomffs) # for q = 0, the form factor is the sum of the form factors of the atoms
         else:
-            for k in range(0,len(params)):
-                for l in range(0,len(params)):
-                    if k == l:
-                        Frh = getr_kl(coords, k, l)
-                        
-                        factors += curve[k]* curve[l] * (1 - 1/6*(Frh*qval)**2)
-                    else:
-                        Frh = getr_kl(coords, k, l)
-                        factors += (curve[k] * curve[l] * (np.sin(qval * Frh)) / (qval * Frh))
-                    #factors += np.sqrt(curve[params[k]]**2 + curve[params[l]]**2 + (2 * curve[params[k]] * curve[params[l]] * np.sin(qval * Frh)) / (qval * Frh))
-            if factors <0 :
-                print("Imaginary number in AA form factor")
-            return cmath.sqrt(factors)
+            # Calculate the pairwise distance matrix (distogram)
+            dgram = np.sqrt(np.sum((coords[..., None, :] - coords[..., None, :, :]) ** 2, axis=-1))
+            dq = dgram * qval
+            
+            aff_matrix = (atomffs[None] * atomffs[:, None])
+            
+            
+            aff_matrix = np.tile(aff_matrix, (len(coords), 1, 1))
+            Factors = np.zeros_like(aff_matrix)
+            
+            diag = dq < 1e-6
+            
+            Factors[diag] = aff_matrix[diag] * (1 - 1/6 * (dq[diag])**2)
+            Factors[~diag] = aff_matrix[~diag] * (np.sin(dq[~diag]) / dq[~diag])
+            Factors = np.sqrt(np.sum(Factors, axis=(1,2)))
+            return Factors
 
-    def getAAFormFactorDummy(self, q, curveDummy, params):
-        factors = np.zeros(len(q))
-        for i in range(len(factors)):
-            for p in range(len(params)):
-                factors[i] += curveDummy[params[p]][i]
-        return factors  
 
-# Function to fit the form factor of the protein structure - ref. Single bead approximation 2.1.4
-"""def fit_formfactor(df_struct, q_new):
-    curve = {}
-    Factors = []
-    q = np.linspace(0.7, 1.5, 10)
-    q = np.insert(q, 0, 0.0)
-    a = df_struct["Element"].values
-    for qval in q:
-        for p in a:
-            curve[p] = np.zeros(11)
-        curveDummy = curve.copy()
-        saxs_params = cSAXSparameters(a, qval, curve, curveDummy)
-        curve, curveDummy = saxs_params.computeFormFactors( a, qval, curve, curveDummy)
-        factors = saxs_params.getAAFormFactor(qval, curve, a, radius)
-        Factors.append(factors)
-    Factors = np.array(Factors)
-    # six polynomial coefficients for each aa type
-    coeff = np.polyfit(q, Factors, 6)
-    polynomial = np.poly1d(coeff)
-    f_fit = polynomial(q_new)
-    return f_fit """
+# Calculate distances 
+def calculate_distogram(coords):
+    """
+    Calculate the pairwise Euclidean distance matrix (distogram) for a set of coordinates.
+    Parameters:
+        coords (numpy.ndarray): A NumPy array of shape (..., N, D), where N is the number of points 
+                                and D is the dimensionality of each point. The ellipsis (...) allows 
+                                for additional leading dimensions.
+    Returns:
+        numpy.ndarray: A NumPy array of shape (..., N, N) containing the pairwise Euclidean distances 
+                       between all points in the input coordinates.
+    """
+    
+    dgram = np.sqrt(np.sum(
+        (coords[..., None, :] - coords[..., None, :, :]) ** 2, axis=-1
+    ))
+    return dgram
+
+
+# calculate form factor with vector operations
+def getAAFormFactor_fast(dgram, q, ff, eps=1e-6):
+    """
+    Computes the form factor using a fast implementation of equations from the Martini paper.
+    This function calculates the form factor based on interatomic distances, scattering 
+    vector magnitudes, and atomic form factors. It uses a second-order Taylor expansion 
+    for cases where the product of distance and scattering vector magnitude is close to zero.
+    Args:
+        dgram (numpy.ndarray): Distance matrix representing interatomic distances.
+        q (numpy.ndarray): Scattering vector magnitudes.
+        ff (numpy.ndarray): Atomic form factors.
+        eps (float, optional): Small threshold value to determine near-zero distances. 
+                               Default is 1e-6.
+    Returns:
+        numpy.ndarray: Computed form factor values.
+    Notes:
+        - Implements Eq.10 and Eq.11 from the Martini paper.
+        - Eq.10 handles the computation of the form factor matrix using sine functions 
+          and Taylor expansion for near-zero values.
+        - Eq.11 adjusts the form factor for cases where the scattering vector magnitude is zero.
+    """
+    # distance * q
+    dq = dgram[..., None] * q
+
+    # ff in matrix form
+    ffmat = (ff[None] * ff[:, None])
+
+    # Output matrix
+    F = np.zeros_like(ffmat)
+
+    # Eq.10 Find the indices where dq ==0 and use second order taylor expansion for them
+    indices_zeros = dq<eps
+    indices_nonzeros = ~indices_zeros
+    F[indices_nonzeros] = ffmat[indices_nonzeros] * np.sin(dq[indices_nonzeros]) / dq[indices_nonzeros]
+    F[indices_zeros] = ffmat[indices_zeros] * (1 - (1/6) * (dq[indices_zeros])**2)
+
+    # Eq.10 Get average and sqrt
+    F = np.sqrt(np.sum(F, axis=(-2,-3)))
+
+    # Eq.11
+    F[..., q==0.0] = np.sum(ff[...,q==0.0])
+
+    return F
+
+
+
+def poly6d_fixed(x_data, y_data):
+    """
+    Fits a fixed 6th-degree polynomial to the given data points with a constraint 
+    that the first derivative at x=0 is zero (coeffs[1] = 0).
+    Parameters:
+        x_data (array-like): The x-coordinates of the data points.
+        y_data (array-like): The y-coordinates of the data points.
+    Returns:
+        function: A partial function representing the best-fit polynomial, 
+                  where the coefficients are optimized to minimize the least squares error.
+    Notes:
+        - The optimization is performed using constrained minimization, ensuring that 
+          the first derivative at x=0 is zero by fixing the second coefficient (coeffs[1]).
+        - The initial guess for the coefficients is generated randomly.
+    """
+    def poly_func(coeffs, x):
+        return sum(c * x**i for i, c in enumerate(coeffs))
+
+    # Define the objective function (least squares error)
+    def objective(coeffs):
+        return np.sum((poly_func(coeffs, x_data) - y_data) ** 2)
+
+    # Initial guess (7 coefficients for a 6th-degree polynomial)
+    initial_guess = np.random.randn(7)
+
+    # Constraint: a_1 = coeffs[1] = 0 (fix derivative at x=0)
+    constraints = {'type': 'eq', 'fun': lambda coeffs: coeffs[1]}  # Forces coeffs[1] = 0
+
+    # Solve using constrained optimization
+    result = minimize(objective, initial_guess, constraints=constraints)
+
+    # Extract best-fit coefficients
+    best_fit_coeffs = result.x
+
+    return partial(poly_func, coeffs=best_fit_coeffs)

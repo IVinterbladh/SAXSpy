@@ -1,12 +1,30 @@
-#rotamer_library.py
-# This script loads the Dunbrack rotamer library and extracts the coordinates of all atoms for a given residue type.
-# The coordinates are stored in a NumPy array, where the first dimension corresponds to the rotamer index, the second
-# dimension corresponds to the atom index, and the third dimension corresponds to the Cartesian coordinates.
-# The script also extracts the atom names and the probabilities of each rotamer.
-# The script is intended to be used as a module in other scripts.
 
-import matplotlib
-import sys
+#rotamer_library.py
+"""Author: Remi 
+The Dunbrack rotamer library is used to sample side-chain conformations for amino acids. These different side-chain conformations are then used to calculate
+the average form factor for each amino acid type.
+
+restypes: _list 
+    List of one-letter codes for the 20 standard amino acids.
+chi_angles_mask: _list  
+    A mask indicating the number of chi angles for each amino acid type.
+restype_1to3: _dict
+    A mapping from one-letter to three-letter amino acid codes.
+restypes3: _list
+    List of three-letter codes for the 20 standard amino acids.
+Functions:
+load_rotamor_library(libpath, libname = "ExtendedOpt1-5"):
+    Loads the Dunbrack rotamer library from the specified path.
+    Args:
+    libpath (_str_): Path to the rotamer library.   
+    libname (str, optional): Name of the rotamer library. Defaults to "ExtendedOpt1-5".
+names_from_pose(pose, element_or_name=True):
+    Extracts atom names or elements from a PyRosetta pose.
+coords_from_pose(pose): 
+    Extracts Cartesian coordinates of all atoms in a PyRosetta pose.
+all_atom_coordinates_from_restype(restype, db):
+    Generates all-atom coordinates for a given amino acid type using the rotamer library.
+"""
 import matplotlib.pyplot as plt
 import tqdm
 import collections
@@ -37,6 +55,7 @@ restypes = [
     "Y",
     "V",
 ]
+
 chi_angles_mask = [
     [0.0, 0.0, 0.0, 0.0],  # ALA
     [1.0, 1.0, 1.0, 1.0],  # ARG
@@ -84,7 +103,7 @@ restype_1to3 = {
 }
 restypes3 = [v for v in restype_1to3.values()]
 
-def load_rotamor_library(libname, PATH):
+def load_rotamor_library(libpath, libname = "ExtendedOpt1-5"):
     # Loads the rotamor library
     amino_acids = [
         "arg",
@@ -129,22 +148,25 @@ def load_rotamor_library(libname, PATH):
 
     for amino_acid in amino_acids:
         db[amino_acid] = pd.read_csv(
-            os.path.join(PATH, f"{libname}/{amino_acid}.bbdep.rotamers.lib"),
+            os.path.join(libpath, f"{libname}/{amino_acid}.bbdep.rotamers.lib"),
             names=list(columns.keys()),
             dtype=columns,
             comment="#",
-            delim_whitespace=True,
+            sep=r'\s+',
             engine="c",
         )
 
     return db
 
-def names_from_pose(pose):
+def names_from_pose(pose, element_or_name=True):
     res= pose.residue(1)
     atom_names = []
     num_atoms = pose.total_atoms()
     for i in range(1, num_atoms + 1):
-        atom_names.append(res.atom_name(i))
+        if element_or_name:
+            atom_names.append(res.atom_type(i).element())
+        else:
+            atom_names.append(res.atom_name(i))
     return atom_names
 
 def coords_from_pose(pose):
@@ -165,32 +187,41 @@ def coords_from_pose(pose):
     return np.array(coordinates)
 
 def all_atom_coordinates_from_restype(restype, db):
+
     residx = restypes.index(restype)
-    print(residx)
     restype3 = restype_1to3[restype]
-    print(restype3.lower())
     num_chi = int(sum(chi_angles_mask[residx]))
-    print(db[restype3.lower()])
-    db_res = db[restype3.lower()]
     pose = pr.pose_from_sequence(restype)
+    names = names_from_pose(pose, element_or_name=False)
+    elements = names_from_pose(pose, element_or_name=True)
 
+    # all residues with side_chains
+    if restype3.lower() in db:
 
-    db_res["Normalized_Probabil"] = db_res.groupby(["Phi", "Psi"])["Probabil"].transform(lambda x: x / x.sum())
-    db_res['bb_idx'] = pd.factorize(db_res[['Phi', 'Psi']].apply(tuple, axis=1))[0]
+        db_res = db[restype3.lower()]
+        backbone_confs = db_res[['Phi', 'Psi']].drop_duplicates().to_numpy()
+        nconf = backbone_confs.shape[0]
+        probs = np.array(db_res["Probabil"])/nconf
+    # backbone only residues
+    else: 
+        backbone_confs = db["pro"][['Phi', 'Psi']].drop_duplicates().to_numpy() # get the backbone conf of another residue, PRO by default
+        nconf = backbone_confs.shape[0]
+        db_res = pd.DataFrame()
+        db_res["Phi"] = backbone_confs[:,0]
+        db_res["Psi"] = backbone_confs[:,1]
+        probs=np.ones(nconf)*(1/nconf)
 
-    names = names_from_pose(pose)
     all_coordinates=[]
     for rotamer  in tqdm.tqdm(db_res.itertuples()):
         pose.set_phi(1, rotamer.Phi)
         pose.set_psi(1, rotamer.Psi)
         for i in range(num_chi):
-            pose.set_chi(1+1, 1, rotamer.__getattribute__("chi%iVal"%(i+1)))
+            pose.set_chi(1+i, 1, rotamer.__getattribute__("chi%iVal"%(i+1)))
 
         coords = coords_from_pose(pose)
         all_coordinates.append(coords)
 
     all_coordinates = np.array(all_coordinates)
-    probs = np.array(db_res["Normalized_Probabil"])
-    return all_coordinates, names, probs
 
+    return all_coordinates, names, elements, probs
 
