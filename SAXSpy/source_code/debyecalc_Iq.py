@@ -3,7 +3,7 @@
 # Date: June 2024
 # Description: Calculate the scattering intensity I(q) using the Debye formula for a protein structure.
 
-import voro
+import voronotalt as voro
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt

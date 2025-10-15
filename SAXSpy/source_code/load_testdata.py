@@ -1,6 +1,6 @@
 # load_testdata.py
 # Author: Isabel Vinterbladh
-# Date: June 2024
+# Date: June 2025
 # Description: Load test data for SAXS calculations.
 
 import numpy as np

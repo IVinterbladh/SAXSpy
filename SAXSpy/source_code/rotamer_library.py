@@ -105,7 +105,7 @@ restypes3 = [v for v in restype_1to3.values()]
 
 def load_rotamor_library(libpath, libname = "ExtendedOpt1-5"):
     # Loads the rotamor library
-    amino_acids = [
+    amino_acids = [ # all amino acids with side chains (GLY and ALA do not have side chains)
         "arg",
         "asp",
         "asn",

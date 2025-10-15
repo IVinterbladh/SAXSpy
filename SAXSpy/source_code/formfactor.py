@@ -22,7 +22,6 @@ poly6d_fixed(x_data, y_data):
 import numpy as np
 from scipy.optimize import minimize
 from functools import partial
-#import voronotalt_python as voronota
 
 
 class cSAXSparameters:
@@ -428,7 +427,7 @@ class cSAXSparameters:
         """
         atomffs = np.zeros(len(params)) # form factors for the atoms
         for nr, it in enumerate(params):
-            atomffs[nr] = self.getFormFactor(q, it) - self.getDummyAtomsFactorSvergun(q, it) #  # remove the dummy atoms contribution
+            atomffs[nr] = self.getFormFactor(q, it) - self.getDummyAtomsFactorCorr0(q, it) #  # remove the dummy atoms contribution
         return atomffs # returning the exclusion form factors - have removed the displaced solvent contribution
 
     

@@ -4,14 +4,15 @@ import numpy as np
 import tqdm
 import csv
 
-from rotamer_library import load_rotamor_library, all_atom_coordinates_from_restype, restype_1to3 
-from mapping_aas import map_pyrosetta_atom_names
-from formfactor import cSAXSparameters, poly6d_fixed
 
 pyrosetta_path = "/home/isabel/anaconda3/envs/pepsi/lib/python3.13/site-packages"
 sys.path.insert(0, pyrosetta_path)
 
-import pyrosetta as pr # noqa: E402, reportMissingImports
+import pyrosetta as pr # noqa: E402
+from rotamer_library import load_rotamor_library, all_atom_coordinates_from_restype, restype_1to3 
+from mapping_aas import map_pyrosetta_atom_names
+from formfactor import cSAXSparameters, poly6d_fixed
+
 pr.init()
 
 libpath = '/home/isabel/Documents/Pepsi-SAXs_articles/dunbrack-rotamer/dunbrack-rotamer/original'
