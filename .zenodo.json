@@ -1,0 +1,39 @@
+{
+    "title": "Electronic Notebook: Github Template for Scientific Datasets to be Deposited on Zenodo.org",
+    "description": "This repository contains electronic notebooks (Jupyter) for reproducing the simulation results presented in ...",
+    "creators": [
+        {
+            "name": "Jane Doe",
+            "affiliation": "Some university...",
+            "orcid": "0000-0000-0000-0000"
+        }
+    ],
+    "contributors": [
+        {
+            "name": "Alfons Åberg",
+            "affiliation": "Department of ...",
+            "orcid": "0000-0000-0000-0000",
+            "type": "Researcher"
+        }
+    ],
+    "keywords": [
+        "reproducible science",
+        "electronic notebook"
+    ],
+    "related_identifiers": [
+        {
+            "scheme": "url",
+            "identifier": "https://github.com/mlund/template-for-supporting-information",
+            "relation": "isSupplementTo"
+        },
+        {
+            "scheme": "doi",
+            "identifier": "doi-goes-here",
+            "relation": "isSupplementTo",
+            "resource_type": "publication-article"
+        }
+    ],
+    "license": "CC-BY-4.0",
+    "access_right": "open",
+    "upload_type": "workflow"
+}
