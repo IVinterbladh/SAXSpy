@@ -3,12 +3,11 @@
 # Date: June 2024
 # Description: Calculate the scattering intensity I(q) using the Debye formula for a protein structure.
 
-import voronotalt as voro
+#import voronotalt as voro
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from collections import defaultdict
-
 
 
 class DebyeCalculator:
@@ -17,12 +16,12 @@ class DebyeCalculator:
         self.q_max = q_max
         self.num_q_points = num_q_points    
 
-    def calculate_Iq(self, structure_file, solvent_file, poly_ff, Explicit_dummy=False):
+    def calculate_Iq(self, structure_file, poly_ff, solvent_coords, Explicit_dummy=False): #solvent_file=None,
         """ Calculate the scattering intensity I(q) using the Debye formula.
         Args:
             structure_file (str): Path to the protein structure file.
-            solvent_file (str): Path to the solvent structure file.
             poly_ff (np.array): Polynomial coefficients for form factors.
+            solvent_file (str): Path to the solvent structure file.
             Explicit_dummy (bool): Whether to use amino acid volumes for explicit solvent particles.
         Returns:
             q_values (np.array): Array of q values.
@@ -31,7 +30,9 @@ class DebyeCalculator:
         # Load the protein structure
         amino_code, structure = self.load_structure(structure_file)
         # Load solvent structure and reduce points
-        water_struct, water_weights = self.water_points(solvent_file, box_size=3)
+        #if solvent_file:
+        #    water_struct, water_weights = self.water_points(solvent_file, box_size=3)
+        water_struct = solvent_coords
         # Generate q values
         q_values = np.linspace(self.q_min, self.q_max, self.num_q_points)
         # If using amino acid volumes from voronota, adjust form factors
@@ -40,21 +41,25 @@ class DebyeCalculator:
             aa_volumes = self.amino_acid_volume(structure, amino_code)
             aa_FormFactors = np.array([self.getfitted_ff(aa, q_values, poly_ff) - self.overallexpansion_factor(q_values, aa_volumes[i])*self.dummyFactor(q_values, aa_volumes[i]) for i, aa in enumerate(amino_code)])
         else:
+            print(amino_code)
             aa_FormFactors = np.array([self.getfitted_ff(aa, q_values, poly_ff) for aa in amino_code])
         # Get water form factors
-        water_FormFactors = np.array([water_weights[w]*self.getfitted_ff('H20', q_values, poly_ff) for w in range(len(water_struct))])
+        water_FormFactors = np.array([self.getfitted_ff('H2O', q_values, poly_ff) for w in range(len(water_struct))])
         # Calculate I(q) using the Debye formula
         Iq_values = self.debye_formula(structure, q_values, aa_FormFactors, water_struct, water_FormFactors)
         return q_values, Iq_values
 
-    def plot_Iq(self, q_values, Iq_values, label='Debye Equation'):
+    def plot_Iq(self, q_values, Iq_values, q_pepsi, Iq_pepsi, q_exp, Iq_exp, I_expmean, label='Protein'):
         plt.figure(figsize=(8, 6))
-        plt.plot(q_values, Iq_values, label=label)
-        plt.xscale('log')
+        plt.plot(q_exp, Iq_exp, alpha =0.5, label="SASBDB - Experimental data")
+        plt.plot(q_exp, I_expmean, label="SASBDB - Mean of Experimental data")
+        plt.plot(q_values, Iq_values, label="SAXSpy")
+        plt.plot(q_pepsi, Iq_pepsi, label="PepsiSAXS")
+        #plt.xscale('log')
         plt.yscale('log')
         plt.xlabel('q (1/Å)')
         plt.ylabel('I(q)')
-        plt.title('Scattering Intensity I(q)')
+        plt.title('Scattering Intensity I(q) of ' + label)
         plt.legend()
         plt.show()
 
@@ -74,7 +79,7 @@ class DebyeCalculator:
         df_struct = data[:, 1:].astype(float)
         return amino_code, df_struct
     
-    def getfitted_ff(amino_acid, q, poly_ff):
+    def getfitted_ff(self, amino_acid, q, poly_ff):
         """ Get the fitted form factor for a given amino acid
             q is the scattering vector
         Args:
@@ -94,7 +99,7 @@ class DebyeCalculator:
         Reduce the number of solvent points by averaging points within boxes of given size.
         This makes the hydration shell uniformly distributed/dense.
         Args:
-            solvent_file (str): Path to the solvent structure file.
+            solvent_file (str): Path to the solvent structure file. # type: ignore
             box_size (float): Size of the boxes to average points within.
         Returns:
             new_points (np.array): Reduced set of solvent points and their coordinates.
@@ -128,7 +133,7 @@ class DebyeCalculator:
                 new_weights.append(sol_weights[idx_list[0]])
 
         return np.array(new_points).astype(float), np.array(new_weights).astype(float)
-    
+
     def amino_acid_volume(self, df_struct, amino_code):
         """ Calculate the volume of each amino acid using Voronoi tessellation.
         Args:
@@ -167,12 +172,12 @@ class DebyeCalculator:
         cells=list(rt.cells)
         return np.array([cell.volume for cell in cells])
 
-    def dummyFactor(q, V):
+    def dummyFactor(self, q, V):
         """ Dummy factor for testing purposes. """
         q2 = q*q/(4*np.pi**2)
         return 0.334 * V * np.exp(-q2 * pow(V, 2/3))
 
-    def overallexpansion_factor(q, V):
+    def overallexpansion_factor(self, q, V):
         q2 = q*q /(4*np.pi)
         
         r0 = (3*V/(4*np.pi))**(1/3)
@@ -186,7 +191,7 @@ class DebyeCalculator:
         
         return (r0/rm)**3 * np.exp(-q2 * pow(4*np.pi/3, 2/3)*(r0**2-rm**2))
 
-    def debye_mem(dgram, q, ff, eps=1e-6):
+    def debye_mem(self,dgram, q, ff, eps=1e-6):
         """ Calculate I(q) using the Debye formula for a single type of scatterer.
         Args:
             dgram (np.array): Distance matrix between scatterers.
@@ -209,7 +214,7 @@ class DebyeCalculator:
             Iq[indices_zeros] = ff2[indices_zeros] * (1 - (1/6) * (dq[indices_zeros])**2)
             return np.sum(Iq, axis=(0,1))
 
-    def debye_hs(dgram, q, waterff, aminoff, eps=1e-6):
+    def debye_hs(self,dgram, q, waterff, aminoff, eps=1e-6):
         """ Calculate I(q) using the Debye formula for two types of scatterers (e.g., protein and solvent).
         Args:
             dgram (np.array): Distance matrix between scatterers.
@@ -234,13 +239,13 @@ class DebyeCalculator:
             Iq[indices_zeros] = ff2[indices_zeros] * (1 - (1/6) * (dq[indices_zeros])**2)
             return np.sum(Iq, axis=(0,1))
         
-    def calculate_distogram(coords):
+    def calculate_distogram(self, coords):
         dgram = np.sqrt(np.sum(
             (coords[..., None, :] - coords[..., None, :, :]) ** 2, axis=-1
         ))
         return dgram
 
-    def calculate_dist2(water_coords, aa_coords):
+    def calculate_dist2(self, water_coords, aa_coords):
         dgram = np.sqrt(np.sum(
             (water_coords[..., None, :] - aa_coords[..., None, :, :]) ** 2, axis=-1
         ))
@@ -263,7 +268,7 @@ class DebyeCalculator:
         Iq_values = np.zeros(len(q_values))
         for i, q in enumerate(q_values):
             Iq_values[i] = self.debye_mem(self.calculate_distogram(structure), q, aa_FormFactors[:,i]) 
-            + self.debye_mem(self.calculate_distogram(water_struct), q, water_FormFactors[:,i])
-            + 2 * self.debye_hs(self.calculate_dist2(water_struct, structure), q, water_FormFactors[:,i], aa_FormFactors[:,i])
+            + 0.0184*0.0184*self.debye_mem(self.calculate_distogram(water_struct), q, water_FormFactors[:,i])
+            + 0.0184*2 * self.debye_hs(self.calculate_dist2(water_struct, structure), q, water_FormFactors[:,i], aa_FormFactors[:,i])
         return Iq_values
 

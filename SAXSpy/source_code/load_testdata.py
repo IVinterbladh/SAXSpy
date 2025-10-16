@@ -50,12 +50,14 @@ def load_xyz(file_path):
     data = np.array([line.split() for line in lines[2:]])
     # Parse data into a DataFrame
     amino_acids = data[:, 0]
-    coordinates = data[:, 1:].astype(float).to_numpy()
+    coordinates = data[:, 1:].astype(float)
     return amino_acids, coordinates
 
 def read_sasbdb(file_path):
-    data = pd.read_csv(file_path, sep='\s+')
-    sasbdb_q = data.iloc[:,0].to_numpy()
-    sasbdb_I = data.iloc[:,1].to_numpy()
-    sasbdb_Imean = data.iloc[:,2].to_numpy() # mean value of I(q)
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    data = np.array([line.split() for line in lines[1:]])
+    sasbdb_q = data[:,0].astype(float) # q values
+    sasbdb_I = data[:,1].astype(float) # I(q) values
+    sasbdb_Imean = data[:,2].astype(float) # mean value of I(q)
     return sasbdb_q, sasbdb_I, sasbdb_Imean
