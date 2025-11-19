@@ -40,7 +40,7 @@ def read_profile_pepsi(out_path, log_path):
     evhs = pepsi_curve["evhs"]
     q_pepsi = pepsi_curve["q"].astype(float).to_numpy()
 
-    return Iq_tot, Iat, Iev, Ihs, atev, aths, evhs, q_pepsi
+    return Iq_tot, Iat, Iev, Ihs, atev, aths, evhs, q_pepsi, pepsi_scaling
 
 
 def load_xyz(file_path):
@@ -59,5 +59,10 @@ def read_sasbdb(file_path):
     data = np.array([line.split() for line in lines[1:]])
     sasbdb_q = data[:,0].astype(float) # q values
     sasbdb_I = data[:,1].astype(float) # I(q) values
-    sasbdb_Imean = data[:,2].astype(float) # mean value of I(q)
-    return sasbdb_q, sasbdb_I, sasbdb_Imean
+    if data.shape[1] > 3:
+        sasbdb_Imean = data[:,3].astype(float) # mean value of I(q)
+        sasbdb_sigma = data[:,2].astype(float) # sigma value of I(q)
+    else:
+        sasbdb_Imean = data[:,2].astype(float) # mean value of I(q)
+        sasbdb_sigma = None # sigma value of I(q)
+    return sasbdb_q, sasbdb_I, sasbdb_Imean, sasbdb_sigma

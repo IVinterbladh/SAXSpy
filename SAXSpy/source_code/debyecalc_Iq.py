@@ -5,9 +5,7 @@
 
 #import voronotalt as voro
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-from collections import defaultdict
 
 
 class DebyeCalculator:
@@ -30,8 +28,6 @@ class DebyeCalculator:
         # Load the protein structure
         amino_code, structure = self.load_structure(structure_file)
         # Load solvent structure and reduce points
-        #if solvent_file:
-        #    water_struct, water_weights = self.water_points(solvent_file, box_size=3)
         water_struct = solvent_coords
         # Generate q values
         q_values = np.linspace(self.q_min, self.q_max, self.num_q_points)
@@ -41,7 +37,6 @@ class DebyeCalculator:
             aa_volumes = self.amino_acid_volume(structure, amino_code)
             aa_FormFactors = np.array([self.getfitted_ff(aa, q_values, poly_ff) - self.overallexpansion_factor(q_values, aa_volumes[i])*self.dummyFactor(q_values, aa_volumes[i]) for i, aa in enumerate(amino_code)])
         else:
-            print(amino_code)
             aa_FormFactors = np.array([self.getfitted_ff(aa, q_values, poly_ff) for aa in amino_code])
         # Get water form factors
         water_FormFactors = np.array([self.getfitted_ff('H2O', q_values, poly_ff) for w in range(len(water_struct))])
@@ -93,84 +88,6 @@ class DebyeCalculator:
         poly = poly_ff[poly_ff[:,0]==amino_acid,2]
         result = poly[0]+poly[1]*q+poly[2]*q**2+poly[3]*q**3+poly[4]*q**4+poly[5]*q**5+poly[6]*q**6
         return result
-
-    def water_points(self, solvent_file, box_size=3):
-        """ Loading hydration shell points and make water layer continuous.
-        Reduce the number of solvent points by averaging points within boxes of given size.
-        This makes the hydration shell uniformly distributed/dense.
-        Args:
-            solvent_file (str): Path to the solvent structure file. # type: ignore
-            box_size (float): Size of the boxes to average points within.
-        Returns:
-            new_points (np.array): Reduced set of solvent points and their coordinates.
-            new_weights (np.array): Corresponding weights for the solvent points.
-        """
-        solvent = pd.read_csv(solvent_file, sep="\t", header=None)
-        solvent.columns = solvent.columns.astype(float)
-        solvent_np = np.vstack([solvent.columns.values, solvent.to_numpy()])
-        water_struct = solvent_np[:, :3].astype(float)
-        sol_weights = solvent_np[:,-1].astype(float)
-        
-        # Dictionary: key = (i,j,k) box index, value = list of point indices
-        boxes = defaultdict(list)
-
-        for idx, (x, y, z) in enumerate(water_struct):
-            i = int(np.floor(x / box_size))
-            j = int(np.floor(y / box_size))
-            k = int(np.floor(z / box_size))
-            boxes[(i, j, k)].append(idx)
-        # --- one representative point per box ---
-        new_points = []
-        new_weights = []
-        for cell, idx_list in boxes.items():
-            if len(idx_list) > 1:
-                # average coordinates if box has multiple points
-                new_points.append(np.mean(water_struct[idx_list], axis=0))
-                new_weights.append(np.mean(sol_weights[idx_list]))
-            else:
-                # take the single point unchanged
-                new_points.append(water_struct[idx_list[0]])
-                new_weights.append(sol_weights[idx_list[0]])
-
-        return np.array(new_points).astype(float), np.array(new_weights).astype(float)
-
-    def amino_acid_volume(self, df_struct, amino_code):
-        """ Calculate the volume of each amino acid using Voronoi tessellation.
-        Args:
-            df_struct (np.array): Array of amino acid coordinates.
-            amino_code (list): List of amino acid codes.
-        Returns:
-            volumes (np.array): Array of volumes for each amino acid.
-        """
-        balls = []
-        # Dictionary containing the radius of respective amino acids
-        amino_acid_radii = {
-                "ALA": 3.2,
-                "ARG": 5.6,
-                "ASN": 4.04,
-                "ASP": 4.04,
-                "CYS": 3.65,
-                "GLU": 4.63,
-                "GLN": 4.64,
-                "GLY": 1.72,
-                "HIS": 4.73,
-                "ILE": 3.94,
-                "LEU": 4.24,
-                "LYS": 5.02,
-                "MET": 4.47,
-                "PHE": 4.99,
-                "PRO": 3.61,
-                "SER": 3.39,
-                "THR": 3.56,
-                "TRP": 5.38,
-                "TYR": 5.36,
-                "VAL": 3.55,
-        }
-        for i, aa in enumerate(amino_code):
-            balls.append(voro.Ball(df_struct[i][0], df_struct[i][1], df_struct[i][2], amino_acid_radii[aa]))
-        rt = voro.RadicalTessellation(balls, probe=1.4)
-        cells=list(rt.cells)
-        return np.array([cell.volume for cell in cells])
 
     def dummyFactor(self, q, V):
         """ Dummy factor for testing purposes. """
@@ -268,7 +185,7 @@ class DebyeCalculator:
         Iq_values = np.zeros(len(q_values))
         for i, q in enumerate(q_values):
             Iq_values[i] = self.debye_mem(self.calculate_distogram(structure), q, aa_FormFactors[:,i]) 
-            + 0.0184*0.0184*self.debye_mem(self.calculate_distogram(water_struct), q, water_FormFactors[:,i])
-            + 0.0184*2 * self.debye_hs(self.calculate_dist2(water_struct, structure), q, water_FormFactors[:,i], aa_FormFactors[:,i])
+            + self.debye_mem(self.calculate_distogram(water_struct), q, water_FormFactors[:,i])
+            + 2 * self.debye_hs(self.calculate_dist2(water_struct, structure), q, water_FormFactors[:,i], aa_FormFactors[:,i])
         return Iq_values
 
