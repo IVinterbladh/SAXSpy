@@ -1,0 +1,10 @@
+HEADER    SINGLE AMINO ACID - ALANINE
+ATOM      1  N   ALA A   1      11.104   8.405   4.573  1.00 20.00           N  
+ATOM      2  CA  ALA A   1      12.560   8.480   4.814  1.00 20.00           C  
+ATOM      3  C   ALA A   1      13.133   7.067   4.920  1.00 20.00           C  
+ATOM      4  O   ALA A   1      12.446   6.118   4.580  1.00 20.00           O  
+ATOM      5  CB  ALA A   1      13.289   9.587   4.061  1.00 20.00           C 
+ 
+TER
+END
+
