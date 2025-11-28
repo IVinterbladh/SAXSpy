@@ -25,12 +25,14 @@ def read_profile_pepsi(out_path, log_path):
         for line in f:
             if "Intensity scaling" in line:
                 pepsi_scaling = float(line.split()[-1])
-
+            elif "Displaced (Dry) Volume" in line:
+                tot_volume = float(line.split()[-2])
+                
     for i in list(pepsi_curve.columns):
         if i !="q":
             pepsi_curve[i] = pepsi_curve[i].astype(float).to_numpy()/pepsi_scaling
   
-    print("Scaling:", pepsi_scaling)
+    print("Scaling:", pepsi_scaling, "Total Volume:", tot_volume)
     Iq_tot = pepsi_curve["Iq"]
     Iat = pepsi_curve["Iat"]
     Iev = pepsi_curve["Iev"]
@@ -40,7 +42,7 @@ def read_profile_pepsi(out_path, log_path):
     evhs = pepsi_curve["evhs"]
     q_pepsi = pepsi_curve["q"].astype(float).to_numpy()
 
-    return Iq_tot, Iat, Iev, Ihs, atev, aths, evhs, q_pepsi, pepsi_scaling
+    return Iq_tot, Iat, Iev, Ihs, atev, aths, evhs, q_pepsi, pepsi_scaling, tot_volume
 
 
 def load_xyz(file_path):

@@ -1,13 +1,13 @@
 # mapping_aas.py: This file contains the mapping of amino acids to their corresponding groups.
 # Author: Isabel Vinterbladh
 import os
-from rotamer_library import restypes3
+#from rotamer_library import restypes3
 
 ### Class Group defines the types and a corresponding integer value ###
 class Group:
     class Type:
         C = 0
-        O = 1
+        O = 1  # noqa: E741
         N = 2
         S = 3
         CH = 4
@@ -43,7 +43,7 @@ class Group:
         O_ = 34
         N_guanidinium = 35
         N_guanidinium_1 = 36
-        I = 37
+        I = 37  # noqa: E741
         D = 38
         D2O = 39
         Bulk = 40
@@ -275,9 +275,9 @@ params = Params(noRes=True)
 pdb_atom_map, atom_map, pdb_map = mapping_amino(params)
 
 # # Print the mappings
-# print("PDB Atom Map:", pdb_atom_map.mapping)
-# print("Atom Map:", atom_map.mapping)
-# print("PDB Map:", pdb_map.mapping)
+print("PDB Atom Map:", pdb_atom_map.mapping)
+print("Atom Map:", atom_map.mapping)
+print("PDB Map:", pdb_map.mapping)
 
 ### Function which maps the atom names of a residue to the corresponding group in the mapping ###
 def map_pyrosetta_atom_names(atom_names, restype3):
