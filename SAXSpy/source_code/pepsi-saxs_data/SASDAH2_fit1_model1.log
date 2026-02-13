@@ -1,0 +1,69 @@
+Version.......................................................... : 2.6 from 29 Jan 2020
+Run at........................................................... : isabelsmacbookpro.local on Thu Oct 16 14:26:02 2025
+Command-line arguments........................................... : /Users/isabelvinterbladh/Downloads/Pepsi-SAXS SASDAH2_fit1_model1.pdb 
+========================Reading PDB file=========================
+Read PDB file.................................................... : SASDAH2_fit1_model1.pdb
+Number of chains read............................................ : 2
+Number of atoms read............................................. : 1247
+====================Analysing input PDB data=====================
+Geometric center at.............................................. : [13.8294 A, 22.5131 A, 7.99825 A]
+Radius of gyration............................................... : 15.1751 A
+Maximum extension from the center................................ : 24.1592 A
+Number of residues............................................... : 155
+Chemical formula................................................. : C803H1210Fe1N214O226S3
+Expected formula................................................. : C803H1210Fe1N214O225S3 (different by 0.08%)
+Molecular weight of nonstandard residues......................... : 0.680296 kDa
+Total molecular weight........................................... : 17.6138 kDa
+Molecular concentration.......................................... : 1 mg/mL
+Intensity scaling................................................ : 2.71495e-09
+==================Computing the hydration layer==================
+Accessible solvent radius........................................ : 3 A
+Width of the hydration shell..................................... : 3.07005 A
+Number of points in the hydration shell.......................... : 431
+Radius of gyration of the hydration shell........................ : 23.3258 A
+Radius of gyration of the envelope............................... : 17.5172 A
+=========================Initialization==========================
+Angular units.................................................... : 1/A, q = 4pi sin(theta)/lambda
+Maximum scattering angle......................................... : 0.5
+Estimated resolution............................................. : 12.5664 A
+Number of points in the output curve............................. : 101
+Maximum number of processors..................................... : 12
+Number of processors online...................................... : 12
+Number of processors used........................................ : 12
+Estimated minimal expansion order of spherical harmonics......... : 12
+Actually used order of spherical harmonics....................... : 12
+====================Initializing form factors====================
+Number of X-ray atom groups used................................. : 69
+==========Computing amplitudes for the hydration shell===========
+=========Computing atomic and excluded volume amplitudes=========
+Number of atomic groups.......................................... : 1247
+Average radius of the atomic group............................... : 1.61764 A
+Total number of electrons........................................ : 9403.32
+Displaced (Dry) Volume........................................... : 22110.6 A^3
+======================Computing intensities======================
+Bulk SLD......................................................... : 3.34 x10e-6/A^2
+Simulated contrast of the solvation shell........................ : 5.50898 %
+d_rho............................................................ : 0.0184 e/A^3
+r0............................................................... : 1.61764 A^3
+======================Computing intensities======================
+Bulk SLD......................................................... : 3.34 x10e-6/A^2
+=====================Writing the output file=====================
+Output file name................................................. : SASDAH2_fit1_model1.out
+Log file name.................................................... : SASDAH2_fit1_model1.log
+=================================================================
+=========================== Timing : ============================
+=================================================================
+Parsing arguments................................................ : 0.00156872 s
+Reading PDB file................................................. : 0.00246849 s
+Analysing input PDB data......................................... : 0.00197925 s
+Computing the hydration layer.................................... : 0.00131556 s
+Initialization................................................... : 9.7456e-05 s
+Initializing form factors........................................ : 0.00131793 s
+Computing amplitudes for the hydration shell..................... : 0.00182176 s
+Computing atomic and excluded volume amplitudes.................. : 0.00550173 s
+Computing intensities............................................ : 4.8916e-05 s
+Computing intensities............................................ : 3.829e-05 s
+Writing the output file.......................................... : 0.000500533 s
+.................................................................
+Total time : .................................................... : 0.0166616 s
+=================================================================

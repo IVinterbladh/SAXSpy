@@ -1,0 +1,68 @@
+Version.......................................................... : 2.6 from 29 Jan 2020
+Run at........................................................... : isabelsmacbookpro.local on Thu Oct 16 14:26:43 2025
+Command-line arguments........................................... : /Users/isabelvinterbladh/Downloads/Pepsi-SAXS SASDAQ2_fit1_model1.pdb 
+========================Reading PDB file=========================
+Read PDB file.................................................... : SASDAQ2_fit1_model1.pdb
+Number of chains read............................................ : 2
+Number of atoms read............................................. : 602
+====================Analysing input PDB data=====================
+Geometric center at.............................................. : [30.3057 A, 28.819 A, 15.3802 A]
+Radius of gyration............................................... : 11.7257 A
+Maximum extension from the center................................ : 25.7433 A
+Number of residues............................................... : 76
+Chemical formula................................................. : C378H627N105O118S1
+Expected formula................................................. : C378H627N105O117S1 (different by 0.17%)
+Total molecular weight........................................... : 8.54683 kDa
+Molecular concentration.......................................... : 1 mg/mL
+Intensity scaling................................................ : 5.59512e-09
+==================Computing the hydration layer==================
+Accessible solvent radius........................................ : 3 A
+Width of the hydration shell..................................... : 3 A
+Number of points in the hydration shell.......................... : 294
+Radius of gyration of the hydration shell........................ : 19.5441 A
+Radius of gyration of the envelope............................... : 14.5686 A
+=========================Initialization==========================
+Angular units.................................................... : 1/A, q = 4pi sin(theta)/lambda
+Maximum scattering angle......................................... : 0.5
+Estimated resolution............................................. : 12.5664 A
+Number of points in the output curve............................. : 101
+Maximum number of processors..................................... : 12
+Number of processors online...................................... : 12
+Number of processors used........................................ : 12
+Estimated minimal expansion order of spherical harmonics......... : 10
+Actually used order of spherical harmonics....................... : 10
+====================Initializing form factors====================
+Number of X-ray atom groups used................................. : 69
+==========Computing amplitudes for the hydration shell===========
+=========Computing atomic and excluded volume amplitudes=========
+Number of atomic groups.......................................... : 602
+Average radius of the atomic group............................... : 1.62588 A
+Total number of electrons........................................ : 4584.98
+Displaced (Dry) Volume........................................... : 10838.1 A^3
+======================Computing intensities======================
+Bulk SLD......................................................... : 3.34 x10e-6/A^2
+Simulated contrast of the solvation shell........................ : 5.50898 %
+d_rho............................................................ : 0.0184 e/A^3
+r0............................................................... : 1.62588 A^3
+======================Computing intensities======================
+Bulk SLD......................................................... : 3.34 x10e-6/A^2
+=====================Writing the output file=====================
+Output file name................................................. : SASDAQ2_fit1_model1.out
+Log file name.................................................... : SASDAQ2_fit1_model1.log
+=================================================================
+=========================== Timing : ============================
+=================================================================
+Parsing arguments................................................ : 0.00154324 s
+Reading PDB file................................................. : 0.00109333 s
+Analysing input PDB data......................................... : 0.00160407 s
+Computing the hydration layer.................................... : 0.000798163 s
+Initialization................................................... : 7.0083e-05 s
+Initializing form factors........................................ : 0.00130879 s
+Computing amplitudes for the hydration shell..................... : 0.00178237 s
+Computing atomic and excluded volume amplitudes.................. : 0.00395985 s
+Computing intensities............................................ : 5.0541e-05 s
+Computing intensities............................................ : 3.6542e-05 s
+Writing the output file.......................................... : 0.000492497 s
+.................................................................
+Total time : .................................................... : 0.0127419 s
+=================================================================

@@ -1,0 +1,62 @@
+Version.......................................................... : 3.5 from July 2022
+Run at........................................................... : ip78-122.eduroam-employee.wireless.lu.se on Fri Sep 26 10:58:13 2025
+Command-line arguments........................................... : /Users/isabelvinterbladh/Documents/GitLab/pepsi/build-isabel-macbookpro/Debug/Pepsi-SAXS /Users/isabelvinterbladh/Documents/GitLab/ala.pdb 
+========================Reading PDB file=========================
+PDB filename..................................................... : /Users/isabelvinterbladh/Documents/GitLab/ala.pdb
+Number of chains read............................................ : 1
+Number of atoms read............................................. : 5
+====================Analysing input PDB data=====================
+Geometric center at.............................................. : [12.5064 A, 7.9314 A, 4.5896 A]
+Radius of gyration............................................... : 1.46421 A
+Maximum extension from the center................................ : 1.90601 A
+Number of residues............................................... : 1
+Chemical formula................................................. : C3H5N1O1
+Expected formula................................................. : C3H5N1O1 (different by 0.00%)
+Total molecular weight........................................... : 0.0710788 kDa
+Molecular concentration.......................................... : 1 mg/mL
+Intensity scaling................................................ : 6.72782e-07
+==================Computing the hydration layer==================
+Accessible solvent radius........................................ : 3 A
+Width of the hydration shell..................................... : 3 A
+Number of points in the hydration shell.......................... : 30
+Radius of gyration of the hydration shell........................ : 6.35531 A
+Radius of gyration of the envelope............................... : 5.86721 A
+=========================Initialization==========================
+Angular units.................................................... : 1/A, q = 4pi sin(theta)/lambda
+Maximum scattering angle......................................... : 0.5
+Estimated resolution............................................. : 12.5664 A
+Number of points in the output curve............................. : 101
+Estimated minimal expansion order of spherical harmonics......... : 3
+Actually used order of spherical harmonics....................... : 3
+====================Initializing form factors====================
+Number of X-ray atom groups used................................. : 70
+==========Computing amplitudes for the hydration shell===========
+=========Computing atomic and excluded volume amplitudes=========
+Number of atomic groups.......................................... : 5
+Average radius of the atomic group............................... : 1.60726 A
+Total number of electrons........................................ : 37.9874
+Displaced (Dry) Volume........................................... : 86.959 A^3
+======================Computing intensities======================
+Bulk SLD......................................................... : 3.34 x10e-6/A^2
+Simulated contrast of the solvation shell........................ : 5.50898 %
+d_rho............................................................ : 0.0184 e/A^3
+r0............................................................... : 1.60726 A^3
+=====================Writing the output file=====================
+Output file name................................................. : ala.out
+Log file name.................................................... : ala.log
+=================================================================
+=========================== Timing : ============================
+=================================================================
+Parsing arguments................................................ : 0.00104595 s
+Reading PDB file................................................. : 0.00031254 s
+Analysing input PDB data......................................... : 0.000114 s
+Computing the hydration layer.................................... : 51.4829 s
+Initialization................................................... : 5.5708e-05 s
+Initializing form factors........................................ : 0.00118066 s
+Computing amplitudes for the hydration shell..................... : 0.000513331 s
+Computing atomic and excluded volume amplitudes.................. : 0.00631155 s
+Computing intensities............................................ : 4.90093 s
+Writing the output file.......................................... : 0.00140887 s
+.................................................................
+Total time : .................................................... : 56.3949 s
+=================================================================
