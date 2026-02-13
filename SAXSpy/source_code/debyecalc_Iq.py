@@ -108,7 +108,7 @@ class DebyeCalculator:
         
         return (r0/rm)**3 * np.exp(-q2 * pow(4*np.pi/3, 2/3)*(r0**2-rm**2))
 
-    def debye_mem(self,dgram, q, ff, eps=1e-6):
+    def debye_mem(self, dgram, q, ff, eps=1e-6):
         """ Calculate I(q) using the Debye formula for a single type of scatterer.
         Args:
             dgram (np.array): Distance matrix between scatterers.
