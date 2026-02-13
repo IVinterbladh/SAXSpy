@@ -38,6 +38,9 @@ class DebyeCalculator:
             aa_FormFactors = np.array([self.getfitted_ff(aa, q_values, poly_ff) - self.overallexpansion_factor(q_values, aa_volumes[i])*self.dummyFactor(q_values, aa_volumes[i]) for i, aa in enumerate(amino_code)])
         else:
             aa_FormFactors = np.array([self.getfitted_ff(aa, q_values, poly_ff) for aa in amino_code])
+                # Save aa_FormFactors to a file
+        print(aa_FormFactors)
+        np.savetxt("marco_FormFactors.txt", aa_FormFactors, header="Amino Acid Form Factors", comments='', fmt='%.6e')
         # Get water form factors
         water_FormFactors = np.array([self.getfitted_ff('H2O', q_values, poly_ff) for w in range(len(water_struct))])
         # Calculate I(q) using the Debye formula
@@ -85,6 +88,7 @@ class DebyeCalculator:
             result (np.array): fitted form factor
         """
         result = np.zeros(len(q))
+        #print("Calculating form factor for ", amino_acid)
         poly = poly_ff[poly_ff[:,0]==amino_acid,2]
         result = poly[0]+poly[1]*q+poly[2]*q**2+poly[3]*q**3+poly[4]*q**4+poly[5]*q**5+poly[6]*q**6
         return result
@@ -181,6 +185,7 @@ class DebyeCalculator:
             np.array: Scattering intensity I(q) for each q value where 
             I(q) = I_aa(q) + I_solv(q) + 2*I_cross(q). (atomistic, excluded solvent and hydration shell contributions)
         """
+        np.savetxt("marco_FormFactors.txt", aa_FormFactors, header="Amino Acid Form Factors", comments='', fmt='%.6e')
         # Calculate I(q) using the Debye formula
         Iq_values = np.zeros(len(q_values))
         for i, q in enumerate(q_values):
